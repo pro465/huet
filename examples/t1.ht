@@ -1,0 +1,5 @@
+axiom Nat : *
+axiom Zero : Nat
+axiom Succ : \(n : Nat) . Nat
+
+theorem One : Nat = (Succ Zero)

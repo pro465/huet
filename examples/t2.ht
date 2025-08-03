@@ -1,0 +1,6 @@
+use .t1
+use t1.Nat
+use t1.Succ
+use t1.One as o
+
+theorem Two: Nat = (Succ o)

@@ -1,0 +1,6 @@
+use .t2
+use t2.Nat
+use t2.Succ
+use t2.Two
+
+theorem Three : Nat = (Succ Two)
