@@ -1,5 +1,5 @@
 use crate::error::Loc;
-use crate::parser::{Expr, Rule, Sym};
+use crate::parser::{Expr, Rule, RuleKind, Sym};
 
 use std::collections::HashMap;
 
@@ -30,6 +30,7 @@ impl NameResolver {
             loc,
             name: vec![k],
             ty: v,
+            kind: RuleKind::Axiom,
             proof: None,
         });
     }

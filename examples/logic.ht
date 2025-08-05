@@ -1,0 +1,215 @@
+axiom If : \(P: Prop).\(Q: Prop). Prop = \(P: Prop).\(Q: Prop).\(p: P). Q
+
+theorem id: \(P: Prop).(If P P) = \(P: Prop).\(p: P). p
+
+axiom And : \(P: Prop).\(Q: Prop). Prop
+      = \(P: Prop).\(Q: Prop).\(R: Prop).(If (If P (If Q R)) R)
+
+theorem and_cons: \(P: Prop).\(p: P).\(Q: Prop).(If Q (And P Q))
+     = \(P: Prop).\(p: P).\(Q: Prop).\(q: Q).\(R: Prop).
+           \(f: (If P (If Q R))). (f p q)
+
+theorem and_symm: \(P: Prop).\(Q: Prop).(If (And P Q) (And Q P))
+     = \(P: Prop).\(Q: Prop).\(and: (And P Q)).
+         (and (And Q P) \(p: P).\(q: Q). (and_cons Q q P p))
+
+
+axiom Iff : \(P: Prop).\(Q: Prop). Prop
+          = \(P: Prop).\(Q: Prop). (And (If P Q) (If Q P))
+
+axiom replace: \(T: Prop).\(p: T).\(q: T).
+                    (If (Iff p q) \(P: \(t: T). Prop). (Iff (P p) (P q)))
+
+theorem iff_refl : \(P: Prop). (Iff P P)
+                 = \(P: Prop). (and_cons (If P P) (id P) (If P P) (id P))
+
+theorem iff_symm : \(P: Prop).\(Q: Prop).(If (Iff P Q) (Iff Q P)) 
+                 = \(P: Prop).\(Q: Prop).\(p: (Iff P Q)). 
+		     (and_symm (If P Q) (If Q P) p)
+
+axiom Or : \(P: Prop).\(Q: Prop). Prop
+         = \(P: Prop).\(Q: Prop).\(R: Prop).(If (If P R) (If (If Q R) R))
+
+theorem or_left : \(P: Prop).\(Q: Prop).(If P (Or P Q))
+                = \(P: Prop).\(Q: Prop).\(p: P).\(R: Prop).
+		   \(f: (If P R)).\(g: (If Q R)).(f p)
+
+theorem or_right : \(P: Prop).\(Q: Prop).(If Q (Or P Q))
+                 = \(P: Prop).\(Q: Prop).\(q: Q).\(R: Prop).
+		   \(f: (If P R)).\(g: (If Q R)).(g q)
+
+theorem or_symm : \(P: Prop).\(Q: Prop).(If (Or P Q) (Or Q P))
+                 = \(P: Prop).\(Q: Prop).\(h: (Or P Q)).
+		        (h (Or Q P) (or_right Q P) (or_left Q P))
+
+
+axiom False: Prop = \(P: Prop). P
+
+axiom Not: \(P: Prop). Prop = \(P: Prop). (If P False)
+
+theorem add_dneg : \(P: Prop).(If P (Not (Not P)))
+            = \(P: Prop).\(p: P).\(not_p: (Not P)).(not_p p)
+
+axiom rem_dneg : \(P: Prop).(If (Not (Not P)) P)
+
+
+theorem dneg: \(P: Prop).(Iff P (Not (Not P)))
+            = \(P: Prop).
+	        (and_cons (If P (Not (Not P))) (add_dneg P)
+                          (If (Not (Not P)) P) (rem_dneg P))
+
+theorem and_assoc_1 
+    : \(P: Prop).\(Q: Prop).\(R: Prop).   (If (And (And P Q) R) (And P (And Q R)))
+    = \(P: Prop).\(Q: Prop).\(R: Prop).\(pqr: (And (And P Q) R)). (pqr
+        (And P (And Q R))
+        \(pq: (And P Q)).\(r: R).(pq
+            (And P (And Q R))
+	    \(p: P).\(q: Q).
+	       (and_cons P p (And Q R) (and_cons Q q R r))
+	)
+    )
+
+theorem and_assoc_2 
+    : \(P: Prop).\(Q: Prop).\(R: Prop).   (If (And P (And Q R)) (And (And P Q) R))
+    = \(P: Prop).\(Q: Prop).\(R: Prop).\(pqr: (And P (And Q R))). (pqr
+        (And (And P Q) R)
+        \(p: P).\(qr: (And Q R)).(qr
+	    (And (And P Q) R)
+	    \(q: Q).\(r: R).
+	       (and_cons (And P Q) (and_cons P p Q q) R r)
+	)
+    )
+
+theorem and_assoc
+    : \(P: Prop).\(Q: Prop).\(R: Prop).(Iff (And (And P Q) R) (And P (And Q R)))
+    = \(P: Prop).\(Q: Prop).\(R: Prop).
+        (and_cons
+	    (If (And (And P Q) R) (And P (And Q R)))
+	    (and_assoc_1 P Q R)
+	    (If (And P (And Q R)) (And (And P Q) R))
+	    (and_assoc_2 P Q R)
+	)
+
+theorem or_assoc_1
+    : \(P: Prop).\(Q: Prop).\(R: Prop).   (If (Or (Or P Q) R) (Or P (Or Q R)))
+    = \(P: Prop).\(Q: Prop).\(R: Prop).\(pqr: (Or (Or P Q) R)). (pqr
+        (Or P (Or Q R))
+	\(pq: (Or P Q)).(pq
+	    (Or P (Or Q R))
+	    (or_left P (Or Q R))
+	    \(q: Q).(or_right P (Or Q R) (or_left Q R q))
+	)
+	\(r: R). (or_right P (Or Q R) (or_right Q R r))
+    )
+
+theorem or_assoc_2
+    : \(P: Prop).\(Q: Prop).\(R: Prop).   (If (Or P (Or Q R)) (Or (Or P Q) R))
+    = \(P: Prop).\(Q: Prop).\(R: Prop).\(pqr: (Or P (Or Q R))). (pqr
+        (Or (Or P Q) R)
+	\(p: P). (or_left (Or P Q) R (or_left P Q p))
+	\(qr: (Or Q R)).(qr
+	    (Or (Or P Q) R)
+	    \(q: Q).(or_left (Or P Q) R (or_right P Q q))
+	    (or_right (Or P Q) R)
+	)
+    )
+
+theorem or_assoc
+    : \(P: Prop).\(Q: Prop).\(R: Prop).(Iff (Or (Or P Q) R) (Or P (Or Q R)))
+    = \(P: Prop).\(Q: Prop).\(R: Prop).
+        (and_cons
+	    (If (Or (Or P Q) R) (Or P (Or Q R)))
+	    (or_assoc_1 P Q R)
+	    (If (Or P (Or Q R)) (Or (Or P Q) R))
+	    (or_assoc_2 P Q R)
+	)
+
+theorem not_or_implies_not_1
+    : \(P: Prop).\(Q: Prop). (If (Not (Or P Q)) (Not P))
+    = \(P: Prop).\(Q: Prop).\(h: (Not (Or P Q))).
+        \(p: P).(h (or_left P Q p))
+
+theorem not_or_implies_not_2
+    : \(P: Prop).\(Q: Prop). (If (Not (Or P Q)) (Not Q))
+    = \(P: Prop).\(Q: Prop).\(h: (Not (Or P Q))).
+        \(q: Q).(h (or_right P Q q))
+
+theorem not_or_then_and_not
+    : \(P: Prop).\(Q: Prop). (If (Not (Or P Q)) (And (Not P) (Not Q)))
+    = \(P: Prop).\(Q: Prop).\(h: (Not (Or P Q))).
+        (and_cons
+	    (Not P)
+	    (not_or_implies_not_1 P Q h) 
+	    (Not Q)
+	    (not_or_implies_not_2 P Q h)
+	)
+
+theorem and_not_then_not_or
+    : \(P: Prop).\(Q: Prop). (If (And (Not P) (Not Q)) (Not (Or P Q)))
+    = \(P: Prop).\(Q: Prop).\(h: (And (Not P) (Not Q))).
+        (h (Not (Or P Q))
+	    \(p_not: (Not P)).\(q_not: (Not Q)).
+            (rem_dneg (Not (Or P Q)) 
+	        \(h2: (Not (Not (Or P Q)))).
+	            (rem_dneg (Or P Q) h2 False
+		        \(p: P). (p_not p)
+		        \(q: Q). (q_not q))
+	    )
+	)
+
+theorem not_or_eq_and_not
+    : \(P: Prop).\(Q: Prop). (Iff (Not (Or P Q)) (And (Not P) (Not Q)))
+    = \(P: Prop).\(Q: Prop). 
+        (and_cons
+	    (If (Not (Or P Q)) (And (Not P) (Not Q)))
+            (not_or_then_and_not P Q)
+	    (If (And (Not P) (Not Q)) (Not (Or P Q)))
+	    (and_not_then_not_or P Q)
+	)
+
+theorem excluded_middle
+    : \(P: Prop). (Or P (Not P))
+    = \(P: Prop). 
+        (rem_dneg (Or P (Not P))
+        \(h: (Not (Or P (Not P)))).
+            (not_or_then_and_not P (Not P) h False
+	        \(p: (Not P)).\(p_not: (Not (Not P))). (p_not p)
+	    )
+        )
+
+theorem or_not_then_if
+    : \(P: Prop).\(Q: Prop). (If (Or (Not P) Q) (If P Q))
+    = \(P: Prop).\(Q: Prop).\(h: (Or (Not P) Q)).\(p: P).(h Q 
+        \(not_p: (Not P)). (not_p p Q)
+	(id Q)
+    )
+
+theorem if_then_or_not
+    : \(P: Prop).\(Q: Prop). (If (If P Q) (Or (Not P) Q))
+    = \(P: Prop).\(Q: Prop).\(h: (If P Q)). 
+        (excluded_middle P (Or (Not P) Q)
+	    \(p: P). (or_right (Not P) Q (h p))
+	    (or_left (Not P) Q)
+	)
+
+theorem or_not_eq_if
+    : \(P: Prop).\(Q: Prop). (Iff (Or (Not P) Q) (If P Q))
+    = \(P: Prop).\(Q: Prop).
+        (and_cons
+	    (If (Or (Not P) Q) (If P Q))
+	    (or_not_then_if P Q)
+            (If (If P Q) (Or (Not P) Q))
+	    (if_then_or_not P Q)
+	)
+
+axiom Forall : \(T: *).\(P: \(t: T). Prop). Prop
+             = \(T: *).\(P: \(t: T). Prop). P
+
+axiom Exists : \(T: *).\(P: \(t: T). Prop). Prop
+             = \(T: *).\(P: \(t: T). Prop). (Not (Forall T \(t: T).(Not (P t))))
+
+theorem exists_cons 
+    : \(T: *).\(P: \(t: T). Prop).\(t: T). (If (P t) (Exists T P))
+    = \(T: *).\(P: \(t: T). Prop).\(t: T).\(p: (P t)).
+           \(f: \(t: T).(Not (P t))).(f t p)
+

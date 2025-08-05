@@ -16,12 +16,25 @@ pub fn to_str(s: &Sym) -> String {
     res
 }
 
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum RuleKind {
+    Theorem,
+    Axiom,
+}
+
 #[derive(Clone, Debug)]
 pub struct Rule {
     pub name: Sym,
     pub loc: Loc,
     pub ty: Expr,
+    pub kind: RuleKind,
     pub proof: Option<Expr>,
+}
+
+impl Rule {
+    pub fn is_theorem(&self) -> bool {
+        self.kind == RuleKind::Theorem
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -65,7 +78,7 @@ impl Display for Expr {
                 }
                 write!(f, "{}", name.last().unwrap())
             }
-            Expr::Lambda { var, ty, body, .. } => write!(f, "\\{}:{}. {}", var, ty, body),
+            Expr::Lambda { var, ty, body, .. } => write!(f, "\\({}:{}). {}", var, ty, body),
             Expr::Call { f: func, args, .. } => {
                 write!(f, "({}", func)?;
                 for arg in args.iter() {
@@ -118,7 +131,13 @@ impl<'a> Parser<'a> {
         })
     }
     fn parse_axiom(&mut self) -> Result<TopLevel, Error> {
-        Ok(TopLevel::Rule(self.parse_rule_basic()?))
+        let rule = self.parse_rule_basic()?;
+        let proof = if self.sc.is_token(TokenTy::Equal)? {
+            Some(self.parse_expr()?)
+        } else {
+            None
+        };
+        Ok(TopLevel::Rule(Rule { proof, ..rule }))
     }
 
     fn parse_theorem(&mut self) -> Result<TopLevel, Error> {
@@ -126,7 +145,11 @@ impl<'a> Parser<'a> {
         self.sc.expect_token(TokenTy::Equal)?;
         let proof = Some(self.parse_expr()?);
 
-        Ok(TopLevel::Rule(Rule { proof, ..rule }))
+        Ok(TopLevel::Rule(Rule {
+            proof,
+            kind: RuleKind::Theorem,
+            ..rule
+        }))
     }
 
     fn parse_rule_basic(&mut self) -> Result<Rule, Error> {
@@ -140,6 +163,7 @@ impl<'a> Parser<'a> {
             name: vec![name],
             loc,
             ty,
+            kind: RuleKind::Axiom,
             proof: None,
         })
     }

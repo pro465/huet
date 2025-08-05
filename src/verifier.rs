@@ -24,11 +24,14 @@ impl Verifier {
             None => return Ok(None),
         };
 
-        if let Some(ref proof) = a.proof {
+        if a.is_theorem() {
+            println!("verifying `{}`...", to_str(&a.name));
+            let proof = a.proof.as_ref().expect("theorems always have proofs.");
             let actual_ty = self.get_ty(proof)?;
             let mut expected_ty = a.ty.clone();
-            while reducible(&expected_ty) {
+            while self.reducible(&expected_ty) {
                 expected_ty = self.eval(expected_ty, &a.loc)?;
+                //println!("::{}", &expected_ty);
             }
 
             if !is_eq(&mut vec![], &expected_ty, &actual_ty) {
@@ -73,15 +76,22 @@ impl Verifier {
                 },
             ),
         };
-        while reducible(&res) {
+        while self.reducible(&res) {
             res = self.eval(res, &loc)?;
         }
         Ok(res)
     }
 
     fn eval(&mut self, res: Expr, loc2: &Loc) -> Result<Expr, Error> {
+        //println!("{}", &res);
         match res {
-            Expr::Identifier { .. } | Expr::Ty(_) => Ok(res),
+            Expr::Ty(_) => Ok(res),
+            Expr::Identifier { ref name, .. } => {
+                match self.rules.get(name).and_then(|x| x.proof.clone()) {
+                    Some(x) => Ok(x),
+                    None => Ok(res),
+                }
+            }
             Expr::Lambda { var, ty, body, loc } => {
                 let ty = self.eval(*ty, &loc)?;
                 self.rules.new_scope(loc, var, ty);
@@ -95,9 +105,9 @@ impl Verifier {
                     ty: Box::new(ty),
                 })
             }
-            Expr::Call { f, args, .. } => {
+            Expr::Call { f, args, loc, .. } => {
                 let f = self.eval((&*f).clone(), loc2)?;
-                self.call(f, &args, loc2)
+                self.call(f, &args, &loc)
             }
         }
     }
@@ -115,9 +125,10 @@ impl Verifier {
                 }
                 let mut free_vars = HashSet::new();
                 get_free_vars(&mut vec![], &mut free_vars, &arg);
-                get_free_vars(&mut vec![], &mut free_vars, &body);
-
+                //get_free_vars(&mut vec![], &mut free_vars, &body);
+                //println!("{}\n{}={}", &body, &var, &arg);
                 f = replace(*body, &mut vec![], &free_vars, &var, &arg);
+                f = self.eval(f, loc)?;
             } else {
                 return Ok(Expr::Call {
                     f: Box::new(f),
@@ -127,6 +138,22 @@ impl Verifier {
             }
         }
         Ok(f)
+    }
+    fn reducible(&self, e: &Expr) -> bool {
+        match e {
+            Expr::Ty(_) => false,
+            Expr::Identifier { name, .. } => {
+                self.rules.get(&name).is_some_and(|r| r.proof.is_some())
+            }
+            Expr::Lambda { ty, body, .. } => self.reducible(ty) || self.reducible(body),
+            Expr::Call { f, args, .. } => {
+                if let Expr::Lambda { .. } = &**f {
+                    true
+                } else {
+                    self.reducible(f) || args.iter().any(|x| self.reducible(x))
+                }
+            }
+        }
     }
 }
 
@@ -205,7 +232,7 @@ fn replace(
 
 fn is_eq(bindings: &mut Vec<(Sym, Sym)>, a: &Expr, b: &Expr) -> bool {
     match (a, b) {
-        (Expr::Ty(_), Expr::Ty(_)) => true,
+        (Expr::Ty(_), _) => true,
         (
             Expr::Call { f, args, .. },
             Expr::Call {
@@ -244,19 +271,5 @@ fn is_eq(bindings: &mut Vec<(Sym, Sym)>, a: &Expr, b: &Expr) -> bool {
             cond
         }
         _ => false,
-    }
-}
-
-fn reducible(e: &Expr) -> bool {
-    match e {
-        Expr::Identifier { .. } | Expr::Ty(_) => false,
-        Expr::Lambda { ty, body, .. } => reducible(ty) || reducible(body),
-        Expr::Call { f, args, .. } => {
-            if let Expr::Lambda { .. } = &**f {
-                true
-            } else {
-                reducible(f) || args.iter().any(reducible)
-            }
-        }
     }
 }
