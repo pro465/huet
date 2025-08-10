@@ -8,13 +8,15 @@ use std::{collections::HashSet, vec::IntoIter};
 pub struct Verifier {
     rules: NameResolver,
     rest: IntoIter<Rule>,
+    stack: Vec<Expr>,
 }
 
 impl Verifier {
     pub fn new(v: Vec<Rule>) -> Self {
         Self {
-            rest: v.into_iter(),
             rules: NameResolver::new(),
+            rest: v.into_iter(),
+            stack: Vec::new(),
         }
     }
 
@@ -28,11 +30,7 @@ impl Verifier {
             println!("verifying `{}`...", to_str(&a.name));
             let proof = a.proof.as_ref().expect("theorems always have proofs.");
             let actual_ty = self.get_ty(proof)?;
-            let mut expected_ty = a.ty.clone();
-            while self.reducible(&expected_ty) {
-                expected_ty = self.eval(expected_ty, &a.loc)?;
-                //println!("::{}", &expected_ty);
-            }
+            let expected_ty = self.eval(a.ty.clone())?;
 
             if !is_eq(&mut vec![], &expected_ty, &actual_ty) {
                 return Err(Error {
@@ -48,7 +46,7 @@ impl Verifier {
 
     fn get_ty(&mut self, p: &Expr) -> Result<Expr, Error> {
         let p = p.clone();
-        let (loc, mut res) = match p {
+        let (loc, res) = match p {
             Expr::Ty(l) => (l.clone(), Expr::Ty(l)),
             Expr::Lambda { loc, var, ty, body } => {
                 self.rules
@@ -76,64 +74,97 @@ impl Verifier {
                 },
             ),
         };
-        while self.reducible(&res) {
-            res = self.eval(res, &loc)?;
+        self.eval(res)
+    }
+
+    fn eval(&mut self, mut res: Expr) -> Result<Expr, Error> {
+        if self.stack.iter().any(|e| is_eq(&mut vec![], e, &res)) {
+            let mut s = String::new();
+            for i in &self.stack {
+                s.push('\n');
+                s.push_str(&i.to_string());
+            }
+            panic!("loop detected:{}", s);
         }
+        self.stack.push(res.clone());
+        while self.reducible(&res) {
+            //println!("{}: {}", self.stack.len(), &res);
+            res = match res {
+                Expr::Ty(_) => res,
+                Expr::Identifier {
+                    ref name, ref loc, ..
+                } => match self.rules.get(name).and_then(|x| x.proof.clone()) {
+                    Some(x) => {
+                        let loc = loc.clone();
+                        res = x.clone();
+                        replace_locs(&mut res, &loc);
+                        continue;
+                    }
+                    None => res,
+                },
+                Expr::Lambda { var, ty, body, loc } => {
+                    let ty = self.eval(*ty)?;
+                    self.rules.new_scope(loc, var, ty);
+                    let body = Box::new(self.eval(*body)?);
+                    let Rule { name, ty, loc, .. } = self.rules.pop_scope().unwrap();
+                    let var = name.into_iter().next().unwrap();
+                    Expr::Lambda {
+                        var,
+                        loc,
+                        body,
+                        ty: Box::new(ty),
+                    }
+                }
+                Expr::Call { f, args, .. } => {
+                    let f = self.eval((&*f).clone())?;
+                    self.call(f, &args)?
+                }
+            };
+        }
+        self.stack.pop();
         Ok(res)
     }
 
-    fn eval(&mut self, res: Expr, loc2: &Loc) -> Result<Expr, Error> {
-        //println!("{}", &res);
-        match res {
-            Expr::Ty(_) => Ok(res),
-            Expr::Identifier { ref name, .. } => {
-                match self.rules.get(name).and_then(|x| x.proof.clone()) {
-                    Some(x) => Ok(x),
-                    None => Ok(res),
-                }
-            }
-            Expr::Lambda { var, ty, body, loc } => {
-                let ty = self.eval(*ty, &loc)?;
-                self.rules.new_scope(loc, var, ty);
-                let body = Box::new(self.eval(*body, loc2)?);
-                let Rule { name, ty, loc, .. } = self.rules.pop_scope().unwrap();
-                let var = name.into_iter().next().unwrap();
-                Ok(Expr::Lambda {
-                    var,
-                    loc,
-                    body,
-                    ty: Box::new(ty),
-                })
-            }
-            Expr::Call { f, args, loc, .. } => {
-                let f = self.eval((&*f).clone(), loc2)?;
-                self.call(f, &args, &loc)
-            }
-        }
-    }
-
-    fn call(&mut self, mut f: Expr, args: &[Expr], loc: &Loc) -> Result<Expr, Error> {
+    fn call(&mut self, mut f: Expr, args: &[Expr]) -> Result<Expr, Error> {
         for (i, arg) in args.into_iter().enumerate() {
             let argty = self.get_ty(&arg)?;
             if let Expr::Lambda { var, ty, body, .. } = f {
+                let mut stacktrace = String::new();
+                for i in self.stack.iter().rev() {
+                    stacktrace.push_str("\n\t");
+                    stacktrace.push_str(&i.to_string());
+                }
+
                 if !is_eq(&mut vec![], &ty, &argty) {
+                    let mut desc = String::new();
+                    desc.push_str(&format!("expected type of parameter `{}` in lambda does not match type of argument:", var));
+                    desc.push_str(&format!(
+                        "\n\texpected: `{}`\n\tactual: `{}`\n\tstack trace: {}",
+                        ty, argty, stacktrace
+                    ));
                     return Err(Error {
-                        loc: loc.clone(),
+                        loc: arg.loc().clone(),
                         ty: ErrorTy::VerifError,
-                        desc: format!("expected type of parameter `{}` in lambda does not match type of argument:\n\texpected: `{}`,\n\tactual: `{}`", var, ty, argty),
+                        desc,
                     });
                 }
                 let mut free_vars = HashSet::new();
                 get_free_vars(&mut vec![], &mut free_vars, &arg);
                 //get_free_vars(&mut vec![], &mut free_vars, &body);
                 //println!("{}\n{}={}", &body, &var, &arg);
-                f = replace(*body, &mut vec![], &free_vars, &var, &arg);
-                f = self.eval(f, loc)?;
+                f = replace(*body, &mut vec![], &free_vars, &var, arg);
+                //println!("{}", &f);
+                //replace_locs(&mut f, loc);
+                f = self.eval(f)?;
             } else {
+                let mut new_args = Vec::new();
+                for e in &args[i..] {
+                    new_args.push(self.eval(e.clone())?);
+                }
                 return Ok(Expr::Call {
+                    loc: f.loc().clone(),
                     f: Box::new(f),
-                    loc: loc.clone(),
-                    args: args[i..].to_vec(),
+                    args: new_args,
                 });
             }
         }
@@ -166,7 +197,8 @@ fn get_free_vars(bound_vars: &mut Vec<String>, free_vars: &mut HashSet<String>, 
                 get_free_vars(bound_vars, free_vars, arg);
             }
         }
-        Expr::Lambda { var, body, .. } => {
+        Expr::Lambda { var, ty, body, .. } => {
+            get_free_vars(bound_vars, free_vars, &ty);
             bound_vars.push(var.clone());
             get_free_vars(bound_vars, free_vars, &body);
             bound_vars.pop();
@@ -181,7 +213,7 @@ fn get_free_vars(bound_vars: &mut Vec<String>, free_vars: &mut HashSet<String>, 
 
 fn replace(
     body: Expr,
-    bound_vars: &mut Vec<String>,
+    bound_vars: &mut Vec<(String, String)>,
     free_vars: &HashSet<String>,
     variable: &String,
     replacement: &Expr,
@@ -202,27 +234,36 @@ fn replace(
             ty,
             body,
         } => {
-            bound_vars.push(var.clone());
-            while free_vars.contains(&var) {
+            let orig = var.clone();
+            while free_vars.contains(&var) || bound_vars.iter().any(|x| &x.1 == &var) {
                 var.push('$');
             }
+            let ty = Box::new(replace(*ty, bound_vars, free_vars, variable, replacement));
+            bound_vars.push((orig, var.clone()));
             let res = Expr::Lambda {
                 loc,
                 var,
-                ty: Box::new(replace(*ty, bound_vars, free_vars, variable, replacement)),
+                ty,
                 body: Box::new(replace(*body, bound_vars, free_vars, variable, replacement)),
             };
             bound_vars.pop();
             res
         }
-        Expr::Identifier { loc, mut name } => {
-            if name.len() == 1 && bound_vars.contains(&name[0]) {
-                while free_vars.contains(&name[0]) {
-                    name[0].push('$');
+        Expr::Identifier { loc, name } => {
+            if name.len() == 1 {
+                match bound_vars.iter().rfind(|x| &x.0 == &name[0]) {
+                    Some((_, x)) => Expr::Identifier {
+                        loc,
+                        name: vec![x.clone()],
+                    },
+                    None => {
+                        if variable == &name[0] {
+                            replacement.clone()
+                        } else {
+                            Expr::Identifier { loc, name }
+                        }
+                    }
                 }
-                Expr::Identifier { loc, name }
-            } else if name.len() == 1 && variable == &name[0] {
-                replacement.clone()
             } else {
                 Expr::Identifier { loc, name }
             }
@@ -271,5 +312,25 @@ fn is_eq(bindings: &mut Vec<(Sym, Sym)>, a: &Expr, b: &Expr) -> bool {
             cond
         }
         _ => false,
+    }
+}
+
+fn replace_locs(f: &mut Expr, loc: &Loc) {
+    match f {
+        Expr::Ty(l) | Expr::Identifier { loc: l, .. } => *l = loc.clone(),
+        Expr::Lambda {
+            ty, body, loc: l, ..
+        } => {
+            *l = loc.clone();
+            replace_locs(ty, loc);
+            replace_locs(body, loc);
+        }
+        Expr::Call { f, args, loc: l } => {
+            *l = loc.clone();
+            replace_locs(f, loc);
+            for i in args.iter_mut() {
+                replace_locs(i, loc);
+            }
+        }
     }
 }

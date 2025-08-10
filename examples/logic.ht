@@ -1,3 +1,5 @@
+axiom Prop : *
+
 axiom If : \(P: Prop).\(Q: Prop). Prop = \(P: Prop).\(Q: Prop).\(p: P). Q
 
 theorem id: \(P: Prop).(If P P) = \(P: Prop).\(p: P). p
@@ -13,12 +15,19 @@ theorem and_symm: \(P: Prop).\(Q: Prop).(If (And P Q) (And Q P))
      = \(P: Prop).\(Q: Prop).\(and: (And P Q)).
          (and (And Q P) \(p: P).\(q: Q). (and_cons Q q P p))
 
+theorem and_left:  \(P: Prop).\(Q: Prop).(If (And P Q) P)
+     = \(P: Prop).\(Q: Prop).\(and: (And P Q)).
+         (and P \(p: P).\(q: Q).p)
+
+theorem and_right: \(P: Prop).\(Q: Prop).(If (And P Q) Q)
+     = \(P: Prop).\(Q: Prop).\(and: (And P Q)).
+         (and Q \(p: P).\(q: Q).q)
 
 axiom Iff : \(P: Prop).\(Q: Prop). Prop
           = \(P: Prop).\(Q: Prop). (And (If P Q) (If Q P))
 
-axiom replace: \(T: Prop).\(p: T).\(q: T).
-                    (If (Iff p q) \(P: \(t: T). Prop). (Iff (P p) (P q)))
+axiom iff_replace: \(T: *).\(p: T).\(q: T).
+                    (If (Iff p q) \(P: \(t: T). Prop). (If (P p) (P q)))
 
 theorem iff_refl : \(P: Prop). (Iff P P)
                  = \(P: Prop). (and_cons (If P P) (id P) (If P P) (id P))
@@ -26,6 +35,16 @@ theorem iff_refl : \(P: Prop). (Iff P P)
 theorem iff_symm : \(P: Prop).\(Q: Prop).(If (Iff P Q) (Iff Q P)) 
                  = \(P: Prop).\(Q: Prop).\(p: (Iff P Q)). 
 		     (and_symm (If P Q) (If Q P) p)
+
+theorem iff_trans 
+    : \(P: Prop).\(Q: Prop).\(R: Prop). (If (Iff P Q) (If (Iff Q R) (Iff P R)))
+    = \(P: Prop).\(Q: Prop).\(R: Prop).\(h1: (Iff P Q)).\(h2: (Iff Q R)).
+        (and_cons
+            (If P R)
+	    \(p: P).(and_left (If Q R) (If R Q) h2 (and_left (If P Q) (If Q P) h1 p))
+            (If R P)
+	    \(r: R).(and_right (If P Q) (If Q P) h1 (and_right (If Q R) (If R Q) h2 r))
+	)
 
 axiom Or : \(P: Prop).\(Q: Prop). Prop
          = \(P: Prop).\(Q: Prop).\(R: Prop).(If (If P R) (If (If Q R) R))
@@ -47,8 +66,9 @@ axiom False: Prop = \(P: Prop). P
 
 axiom Not: \(P: Prop). Prop = \(P: Prop). (If P False)
 
-theorem add_dneg : \(P: Prop).(If P (Not (Not P)))
-            = \(P: Prop).\(p: P).\(not_p: (Not P)).(not_p p)
+theorem add_dneg
+    : \(P: Prop).(If P (Not (Not P)))
+    = \(P: Prop).\(p: P).\(not_p: (Not P)).(not_p p)
 
 axiom rem_dneg : \(P: Prop).(If (Not (Not P)) P)
 
@@ -202,14 +222,85 @@ theorem or_not_eq_if
 	    (if_then_or_not P Q)
 	)
 
+theorem if_eq_or_not
+    : \(P: Prop).\(Q: Prop). (Iff (If P Q) (Or (Not P) Q))
+    = \(P: Prop).\(Q: Prop). (iff_symm (Or (Not P) Q) (If P Q) (or_not_eq_if P Q))
+
+theorem not_if_implies_and_not
+    : \(P: Prop).\(Q: Prop). (If (Not (If P Q)) (And P (Not Q)))
+    = \(P: Prop).\(Q: Prop).\(h: (Not (If P Q))).
+        (and_cons
+	    P
+	    (rem_dneg P \(p_not: (Not P)). (h \(p: P). (p_not p Q)))
+	    (Not Q)
+	    \(q: Q).(h \(p: P). q)
+	)
+
+theorem pierce
+    : \(P: Prop).\(Q: Prop).(If (If (If P Q) P) P)
+    = \(P: Prop).\(Q: Prop).\(h: (If (If P Q) P)).
+        (if_then_or_not (If P Q) P h P
+	    \(h2: (Not (If P Q))).
+	        (and_left P (Not Q) (not_if_implies_and_not P Q h2))
+	    
+	    (id P)
+	)
+	 
+	         
 axiom Forall : \(T: *).\(P: \(t: T). Prop). Prop
              = \(T: *).\(P: \(t: T). Prop). P
 
 axiom Exists : \(T: *).\(P: \(t: T). Prop). Prop
-             = \(T: *).\(P: \(t: T). Prop). (Not (Forall T \(t: T).(Not (P t))))
+             = \(T: *).\(P: \(t: T). Prop).
+	         \(R: *).\(f: \(t: T).\(p:(P t)). R). R
 
 theorem exists_cons 
-    : \(T: *).\(P: \(t: T). Prop).\(t: T). (If (P t) (Exists T P))
+    : \(T: *).\(P: \(t: T). Prop).\(t: T).\(p: (P t)). (Exists T P)
     = \(T: *).\(P: \(t: T). Prop).\(t: T).\(p: (P t)).
-           \(f: \(t: T).(Not (P t))).(f t p)
+           \(R: *).\(f: \(t: T).\(p:(P t)). R).(f t p)
+
+axiom Eq : \(T: *).\(P: T).\(Q: T). Prop
+         = \(T: *).\(P: T).\(Q: T). \(f: \(X: T). Prop). (Iff (f P) (f Q))
+
+theorem eq_refl 
+    : \(T: *).\(P: T). (Eq T P P)
+    = \(T: *).\(P: T).\(f: \(P: T). Prop).
+        (and_cons
+	    (If (f P) (f P)) (id (f P))
+	    (If (f P) (f P)) (id (f P)))
+
+theorem eq_symm
+    : \(T: *).\(P: T).\(Q: T). (If (Eq T P Q) (Eq T Q P))
+    = \(T: *).\(P: T).\(Q: T).\(h: (Eq T P Q)).
+	\(f: \(X: T). Prop).(iff_symm (f P) (f Q) (h f))
+
+theorem eq_trans
+    : \(T: *).\(P: T).\(Q: T).\(R: T). (If (Eq T P Q) (If (Eq T Q R) (Eq T P R)))
+    = \(T: *).\(P: T).\(Q: T).\(R: T).\(h1: (Eq T P Q)).\(h2: (Eq T Q R)).
+        \(f: \(X: T). Prop).(iff_trans (f P) (f Q) (f R) (h1 f) (h2 f))
+
+theorem eq_trans2
+    : \(T: *).\(P: T).\(Q: T).\(R: T).\(S: T).
+        (If (Eq T P Q) (If (Eq T Q R) (If (Eq T R S) (Eq T P S))))
+    = \(T: *).\(P: T).\(Q: T).\(R: T).\(S: T).
+        \(h1: (Eq T P Q)).\(h2: (Eq T Q R)).\(h3: (Eq T R S)).
+            (eq_trans T P Q S h1 (eq_trans T Q R S h2 h3))
+
+theorem eq_trans3
+    : \(T: *).\(O: T).\(P: T).\(Q: T).\(R: T).\(S: T).
+        (If (Eq T O P) (If (Eq T P Q) (If (Eq T Q R) (If (Eq T R S) (Eq T O S)))))
+    = \(T: *).\(O: T).\(P: T).\(Q: T).\(R: T).\(S: T).
+        \(h1: (Eq T O P)).\(h2: (Eq T P Q)).\(h3: (Eq T Q R)).\(h4: (Eq T R S)).
+            (eq_trans T O P S h1 (eq_trans2 T P Q R S h2 h3 h4))
+
+
+theorem eq_replace
+    : \(T: *).\(P: T).\(Q: T).\(eq: (Eq T P Q)).\(R: *).\(f: \(X: T). R). (Eq R (f P) (f Q))
+    = \(T: *).\(P: T).\(Q: T).\(eq: (Eq T P Q)).\(R: *).\(f: \(X: T). R).
+        (and_left 
+	    (If (Eq R (f P) (f P)) (Eq R (f P) (f Q))) 
+	    (If (Eq R (f P) (f Q)) (Eq R (f P) (f P)))
+	    (eq \(X: T).(Eq R (f P) (f X)))
+	    (eq_refl R (f P)))
+
 

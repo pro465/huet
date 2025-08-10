@@ -43,6 +43,7 @@ pub enum TopLevel {
         loc: Loc,
         root: bool,
         sym: Sym,
+        star: bool,
         alias: Option<String>,
     },
     Rule(Rule),
@@ -66,6 +67,17 @@ pub enum Expr {
         ty: Box<Expr>,
         body: Box<Expr>,
     },
+}
+
+impl Expr {
+    pub fn loc(&self) -> &Loc {
+        match self {
+            Expr::Ty(loc)
+            | Expr::Identifier { loc, .. }
+            | Expr::Call { loc, .. }
+            | Expr::Lambda { loc, .. } => loc,
+        }
+    }
 }
 
 impl Display for Expr {
@@ -118,6 +130,7 @@ impl<'a> Parser<'a> {
         let root = self.sc.is_token(TokenTy::Period)?;
         let (_, name) = self.sc.expect_identifier()?;
         let sym = self.expect_sym(name)?;
+        let star = self.sc.is_token(TokenTy::Star)?;
         let alias = if self.sc.is_token(TokenTy::As)? {
             Some(self.sc.expect_identifier()?.1)
         } else {
@@ -126,6 +139,7 @@ impl<'a> Parser<'a> {
         Ok(TopLevel::Use {
             loc,
             root,
+            star,
             sym,
             alias,
         })

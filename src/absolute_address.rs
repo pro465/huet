@@ -10,6 +10,7 @@ use std::path::PathBuf;
 
 pub struct Converter {
     name_resolver: HashMap<Sym, Sym>,
+    stars: HashMap<Sym, Vec<Sym>>,
     defs: Vec<Rule>,
 }
 
@@ -17,6 +18,7 @@ impl Converter {
     pub fn new() -> Self {
         Self {
             name_resolver: HashMap::new(),
+            stars: HashMap::new(),
             defs: Vec::new(),
         }
     }
@@ -30,16 +32,17 @@ impl Converter {
         while let Some(toplevel) = parser.parse_toplevel()? {
             match toplevel {
                 TopLevel::Rule(mut r) => {
-                    convert_rule(&mut self.name_resolver, &mut r, &mut scope);
+                    self.convert_rule(&mut r, &mut scope);
                     self.defs.push(r);
                 }
                 TopLevel::Use {
                     loc,
                     root,
+                    star,
                     sym,
                     alias,
                 } => {
-                    self.handle_use(loc, scope.clone(), sym, root, alias, path.clone())?;
+                    self.handle_use(loc, scope.clone(), sym, star, root, alias, path.clone())?;
                 }
             }
         }
@@ -53,6 +56,7 @@ impl Converter {
         loc: Loc,
         mut scope: Sym,
         mut sym: Sym,
+        star: bool,
         root: bool,
         alias: Option<String>,
         mut path: PathBuf,
@@ -66,6 +70,9 @@ impl Converter {
         } else {
             sym
         };
+        if star {
+            self.stars.entry(scope.clone()).or_default().push(s.clone());
+        }
         if let Some(s) = self.get(&s) {
             let a = alias.unwrap_or(s.last().unwrap().to_string());
             scope.push(a);
@@ -139,8 +146,67 @@ impl Converter {
         let parser = Parser::new(scanner);
         self.convert(scope, path, parser)
     }
+    fn convert_rule(&mut self, rule: &mut Rule, scope: &mut Sym) {
+        let l = scope.len();
+        scope.append(&mut rule.name);
+        self.name_resolver.insert(scope.clone(), scope.clone());
+        rule.name = scope.clone();
+        scope.truncate(l);
+        let mut v = Vec::new();
+        self.convert_expr(&mut rule.ty, &mut v, scope);
+        if let Some(ref mut proof) = rule.proof {
+            self.convert_expr(proof, &mut v, scope);
+        }
+    }
 
+    fn convert_expr(&self, e: &mut Expr, v: &mut Vec<Sym>, scope: &mut Sym) {
+        match e {
+            Expr::Ty(_) => {}
+            Expr::Call { f, args, .. } => {
+                self.convert_expr(f, v, scope);
+                for arg in args.iter_mut() {
+                    self.convert_expr(arg, v, scope);
+                }
+            }
+            Expr::Lambda { var, ty, body, .. } => {
+                self.convert_expr(ty, v, scope);
+                v.push(vec![var.clone()]);
+                self.convert_expr(body, v, scope);
+                v.pop();
+            }
+            Expr::Identifier { name, .. } => {
+                if v.contains(&name) {
+                    return;
+                }
+                let l = scope.len();
+                scope.extend_from_slice(&name);
+                *name = match self.get(scope) {
+                    Some(x) => x.clone(),
+                    None => scope.clone(),
+                };
+                scope.truncate(l);
+            }
+        }
+    }
     fn get(&self, k: &Sym) -> Option<&Sym> {
+        if let Some(x) = self.get_nonstar(k) {
+            return Some(x);
+        }
+        for i in 1..k.len() {
+            if let Some(stars) = self.stars.get(&k[..i]) {
+                for s in stars {
+                    let mut t = s.clone();
+                    t.extend_from_slice(&k[i..]);
+                    if let Some(x) = self.get_nonstar(&t) {
+                        return Some(x);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    fn get_nonstar(&self, k: &Sym) -> Option<&Sym> {
         let mut v = self.name_resolver.get(&k[..1])?;
         for i in &k[1..] {
             let mut t = v.clone();
@@ -148,48 +214,5 @@ impl Converter {
             v = self.name_resolver.get(&t)?;
         }
         Some(v)
-    }
-}
-
-fn convert_rule(names: &mut HashMap<Sym, Sym>, rule: &mut Rule, scope: &mut Sym) {
-    let l = scope.len();
-    scope.append(&mut rule.name);
-    names.insert(scope.clone(), scope.clone());
-    rule.name = scope.clone();
-    scope.truncate(l);
-    let mut v = Vec::new();
-    convert_expr(names, &mut rule.ty, &mut v, scope);
-    if let Some(ref mut proof) = rule.proof {
-        convert_expr(names, proof, &mut v, scope);
-    }
-}
-
-fn convert_expr(names: &mut HashMap<Sym, Sym>, e: &mut Expr, v: &mut Vec<Sym>, scope: &mut Sym) {
-    match e {
-        Expr::Ty(_) => {}
-        Expr::Call { f, args, .. } => {
-            convert_expr(names, f, v, scope);
-            for arg in args.iter_mut() {
-                convert_expr(names, arg, v, scope);
-            }
-        }
-        Expr::Lambda { var, ty, body, .. } => {
-            convert_expr(names, ty, v, scope);
-            v.push(vec![var.clone()]);
-            convert_expr(names, body, v, scope);
-            v.pop();
-        }
-        Expr::Identifier { name, .. } => {
-            if v.contains(&name) {
-                return;
-            }
-            let l = scope.len();
-            scope.extend_from_slice(&name);
-            *name = match names.get(scope) {
-                Some(x) => x.clone(),
-                None => scope.clone(),
-            };
-            scope.truncate(l);
-        }
     }
 }
