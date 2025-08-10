@@ -9,8 +9,8 @@ axiom One: Nat = (Succ Zero)
 axiom nat_induction: 
     \(P: \(n: Nat). Prop). 
         (If (P Zero) 
-	    (If (Forall Nat \(n: Nat). (If (P n) (P (Succ n))))
-	        (Forall Nat P)))
+            (If (Forall Nat \(n: Nat). (If (P n) (P (Succ n))))
+                (Forall Nat P)))
 
 axiom add: \(m: Nat).\(n: Nat). Nat
 axiom add_zero: \(n: Nat). (Eq Nat (add n Zero) n)
@@ -24,11 +24,11 @@ theorem add_one
     : \(n: Nat). (Eq Nat (add n One) (Succ n))
     = \(n: Nat).
         (eq_trans Nat
-	    (add n One)
-	    (Succ (add n Zero))
-	    (Succ n)
-	    (add_succ n Zero)
-	    (eq_replace Nat (add n Zero) n (add_zero n) Nat Succ))
+            (add n One)
+            (Succ (add n Zero))
+            (Succ n)
+            (add_succ n Zero)
+            (eq_replace Nat (add n Zero) n (add_zero n) Nat Succ))
 
 theorem add_succ_s
     : \(m: Nat).\(n: Nat). (Eq Nat (Succ (add m n)) (add m (Succ n)))
@@ -38,8 +38,8 @@ theorem add_assoc_zero
     : \(a: Nat).\(b: Nat).(Eq Nat (add (add a b) Zero) (add a (add b Zero)))
     = \(a: Nat).\(b: Nat).
         (eq_trans Nat (add (add a b) Zero) (add a b) (add a (add b Zero))
-	    (add_zero (add a b))
-	    (eq_replace Nat b (add b Zero) (add_zero_s b) Nat \(b: Nat).(add a b)))
+            (add_zero (add a b))
+            (eq_replace Nat b (add b Zero) (add_zero_s b) Nat \(b: Nat).(add a b)))
 
 theorem add_assoc_succ
     : \(a: Nat).\(b: Nat).\(c: Nat).
@@ -48,20 +48,20 @@ theorem add_assoc_succ
 
     = \(a: Nat).\(b: Nat).\(c: Nat).
         \(h: (Eq Nat (add (add a b) c) (add a (add b c)))).
-	    (eq_trans3 Nat
-	        (add (add a b) (Succ c))
-		(Succ (add (add a b) c))
-		(Succ (add a (add b c)))
-		(add a (Succ (add b c)))
-		(add a (add b (Succ c)))
-		(add_succ (add a b) c)
-	        (eq_replace Nat
-	            (add (add a b) c) (add a (add b c)) h
+            (eq_trans3 Nat
+                (add (add a b) (Succ c))
+                (Succ (add (add a b) c))
+                (Succ (add a (add b c)))
+                (add a (Succ (add b c)))
+                (add a (add b (Succ c)))
+                (add_succ (add a b) c)
+                (eq_replace Nat
+                    (add (add a b) c) (add a (add b c)) h
                     Nat Succ)
-		(add_succ_s a (add b c))
-	        (eq_replace Nat
-	            (Succ (add b c)) (add b (Succ c))
-		    (add_succ_s b c)
+                (add_succ_s a (add b c))
+                (eq_replace Nat
+                    (Succ (add b c)) (add b (Succ c))
+                    (add_succ_s b c)
                     Nat \(m: Nat).(add a m)))
        
 
@@ -69,8 +69,8 @@ theorem add_assoc
     : \(a: Nat).\(b: Nat).\(c: Nat). (Eq Nat (add (add a b) c) (add a (add b c)))
     = \(a: Nat).\(b: Nat).
         (nat_induction \(c: Nat). (Eq Nat (add (add a b) c) (add a (add b c)))
-	    (add_assoc_zero a b)
-	    (add_assoc_succ a b))
+            (add_assoc_zero a b)
+            (add_assoc_succ a b))
 
 theorem add_assoc_s
     : \(a: Nat).\(b: Nat).\(c: Nat). (Eq Nat (add a (add b c)) (add (add a b) c))
@@ -83,32 +83,32 @@ theorem succ_add_zero
     : \(m: Nat).(Eq Nat (add (Succ m) Zero) (Succ (add m Zero)))
     = \(m: Nat).
         (eq_trans Nat
-	    (add (Succ m) Zero)
-	    (Succ m)
-	    (Succ (add m Zero))
-	    (add_zero (Succ m))
-	    (eq_replace Nat m (add m Zero) (add_zero_s m) Nat Succ))
+            (add (Succ m) Zero)
+            (Succ m)
+            (Succ (add m Zero))
+            (add_zero (Succ m))
+            (eq_replace Nat m (add m Zero) (add_zero_s m) Nat Succ))
 
 theorem succ_add_succ
     : \(m: Nat).\(n: Nat). 
         (If (Eq Nat (add (Succ m) n) (Succ (add m n)))
-	    (Eq Nat (add (Succ m) (Succ n)) (Succ (add m (Succ n)))))
+            (Eq Nat (add (Succ m) (Succ n)) (Succ (add m (Succ n)))))
     = \(m: Nat).\(n: Nat). \(h: (Eq Nat (add (Succ m) n) (Succ (add m n)))).
         (eq_trans2 Nat
-	    (add (Succ m) (Succ n))
-	    (Succ (add (Succ m) n))
-	    (Succ (Succ (add m n)))
-	    (Succ (add m (Succ n)))
-	    (add_succ (Succ m) n)
-	    (eq_replace Nat (add (Succ m) n) (Succ (add m n)) h Nat Succ)
-	    (eq_replace Nat (Succ (add m n)) (add m (Succ n)) (add_succ_s m n) Nat Succ))
+            (add (Succ m) (Succ n))
+            (Succ (add (Succ m) n))
+            (Succ (Succ (add m n)))
+            (Succ (add m (Succ n)))
+            (add_succ (Succ m) n)
+            (eq_replace Nat (add (Succ m) n) (Succ (add m n)) h Nat Succ)
+            (eq_replace Nat (Succ (add m n)) (add m (Succ n)) (add_succ_s m n) Nat Succ))
 
 theorem succ_add
     : \(m: Nat).\(n: Nat). (Eq Nat (add (Succ m) n) (Succ (add m n)))
     = \(m: Nat).
         (nat_induction \(n: Nat). (Eq Nat (add (Succ m) n) (Succ (add m n)))
-	    (succ_add_zero m)
-	    (succ_add_succ m))
+            (succ_add_zero m)
+            (succ_add_succ m))
 
 theorem succ_add_s
     : \(m: Nat).\(n: Nat). (Eq Nat (Succ (add m n)) (add (Succ m) n))
@@ -118,15 +118,15 @@ theorem succ_add_s
 theorem zero_add_comm : \(n: Nat). (Eq Nat (add Zero n) (add n Zero))
     = (nat_induction \(n: Nat). (Eq Nat (add Zero n) (add n Zero))
         (eq_refl Nat (add Zero Zero))
-	\(n: Nat).\(h: (Eq Nat (add Zero n) (add n Zero))).
-	(eq_trans2 Nat
-	    (add Zero (Succ n))
-	    (Succ (add Zero n))
-	    (Succ (add n Zero))
-	    (add (Succ n) Zero)
-	    (add_succ Zero n)
-	    (eq_replace Nat (add Zero n) (add n Zero) h Nat Succ)
-	    (succ_add_s n Zero)))
+        \(n: Nat).\(h: (Eq Nat (add Zero n) (add n Zero))).
+        (eq_trans2 Nat
+            (add Zero (Succ n))
+            (Succ (add Zero n))
+            (Succ (add n Zero))
+            (add (Succ n) Zero)
+            (add_succ Zero n)
+            (eq_replace Nat (add Zero n) (add n Zero) h Nat Succ)
+            (succ_add_s n Zero)))
 
 theorem add_zero_comm
     : \(n: Nat). (Eq Nat (add n Zero) (add Zero n))
@@ -135,24 +135,24 @@ theorem add_zero_comm
 theorem succ_add_comm
     : \(m: Nat).\(n: Nat).
         (If (Eq Nat (add m n) (add n m))
-	    (Eq Nat (add m (Succ n)) (add (Succ n) m)))
+            (Eq Nat (add m (Succ n)) (add (Succ n) m)))
     = \(m: Nat).\(n: Nat).\(h: (Eq Nat (add m n) (add n m))).
         (eq_trans2 Nat
-	    (add m (Succ n))
-	    (Succ (add m n))
-	    (Succ (add n m))
-	    (add (Succ n) m)
-	    (add_succ m n)
-	    (eq_replace Nat (add m n) (add n m) h Nat Succ)
-	    (succ_add_s n m))
+            (add m (Succ n))
+            (Succ (add m n))
+            (Succ (add n m))
+            (add (Succ n) m)
+            (add_succ m n)
+            (eq_replace Nat (add m n) (add n m) h Nat Succ)
+            (succ_add_s n m))
 
 
 theorem add_comm
     : \(m: Nat).\(n: Nat). (Eq Nat (add m n) (add n m))
     = \(m: Nat). 
         (nat_induction \(n: Nat). (Eq Nat (add m n) (add n m))
-	    (add_zero_comm m)
-	    (succ_add_comm m))
+            (add_zero_comm m)
+            (succ_add_comm m))
 
 axiom Leq: \(m: Nat).\(n: Nat). Prop
          = \(m: Nat).\(n: Nat). (Exists Nat \(x: Nat). (Eq Nat (add m x) n))
@@ -161,13 +161,13 @@ theorem leq_refl
     : \(n: Nat). (Leq n n)
     = \(n: Nat). 
         (exists_cons Nat \(x: Nat). (Eq Nat (add n x) n)
-	    Zero (add_zero n))
+            Zero (add_zero n))
 
 theorem leq_succ_self
     : \(n: Nat). (Leq n (Succ n))
     = \(n: Nat).
         (exists_cons Nat \(x: Nat). (Eq Nat (add n x) (Succ n))
-	    One (add_one n))
+            One (add_one n))
 
 
 theorem leq_trans
@@ -175,28 +175,28 @@ theorem leq_trans
         (If (Leq a b) (If (Leq b c) (Leq a c)))
     = \(a: Nat).\(b: Nat).\(c: Nat).
         \(ab: (Leq a b)).\(bc: (Leq b c)).
-	    (ab (Leq a c) \(x: Nat).\(hx: (Eq Nat (add a x) b)).
-	    (bc (Leq a c) \(y: Nat).\(hy: (Eq Nat (add b y) c)).
-	        (exists_cons Nat \(z: Nat). (Eq Nat (add a z) c)
-		    (add x y)
-		    (eq_trans2 Nat
-		        (add a (add x y))
-			(add (add a x) y)
-			(add b y)
-			c
-			(add_assoc_s a x y)
-			(eq_replace Nat
-		            (add a x) b
-			    hx
-			    Nat \(z: Nat).(add z y))
-			hy
-		    )
-		)
-	    ))
+            (ab (Leq a c) \(x: Nat).\(hx: (Eq Nat (add a x) b)).
+            (bc (Leq a c) \(y: Nat).\(hy: (Eq Nat (add b y) c)).
+                (exists_cons Nat \(z: Nat). (Eq Nat (add a z) c)
+                    (add x y)
+                    (eq_trans2 Nat
+                        (add a (add x y))
+                        (add (add a x) y)
+                        (add b y)
+                        c
+                        (add_assoc_s a x y)
+                        (eq_replace Nat
+                            (add a x) b
+                            hx
+                            Nat \(z: Nat).(add z y))
+                        hy
+                    )
+                )
+            ))
 
 theorem leq_succ: \(m: Nat).\(n: Nat).(If (Leq m n) (Leq m (Succ n)))
     = \(m: Nat).\(n: Nat).\(h: (Leq m n)).
         (leq_trans
-	    m n (Succ n)
-	    h
-	    (leq_succ_self n))
+            m n (Succ n)
+            h
+            (leq_succ_self n))
