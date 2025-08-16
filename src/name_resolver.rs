@@ -21,8 +21,8 @@ impl NameResolver {
         }
         self.globals.get(idx)
     }
-    pub fn insert(&mut self, k: Sym, v: Rule) {
-        self.globals.insert(k, v);
+    pub fn insert(&mut self, k: Sym, v: Rule) -> Option<Rule> {
+        self.globals.insert(k, v)
     }
 
     pub fn new_scope(&mut self, loc: Loc, k: String, v: Expr) {

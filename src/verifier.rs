@@ -40,23 +40,30 @@ impl Verifier {
                 });
             }
         }
-        self.rules.insert(a.name.clone(), a);
+        let loc = a.loc.clone();
+        if let Some(x) = self.rules.insert(a.name.clone(), a) {
+            return Err(Error {
+                loc,
+                ty: ErrorTy::VerifError,
+                desc: format!("symbol was already defined at {}", x.loc),
+            });
+        }
         Ok(Some(()))
     }
 
     fn get_ty(&mut self, p: &Expr) -> Result<Expr, Error> {
         let p = p.clone();
-        let (loc, res) = match p {
-            Expr::Ty(l) => (l.clone(), Expr::Ty(l)),
+        let res = match p {
+            Expr::Ty(l) => Expr::Ty(l),
             Expr::Lambda { loc, var, ty, body } => {
                 self.rules
                     .new_scope(loc.clone(), var.clone(), (&*ty).clone());
                 let body = Box::new(self.get_ty(&body)?);
                 self.rules.pop_scope();
-                (loc.clone(), Expr::Lambda { loc, var, ty, body })
+                Expr::Lambda { loc, var, ty, body }
             }
             Expr::Identifier { loc, name, .. } => match self.rules.get(&name) {
-                Some(x) => (loc, x.ty.clone()),
+                Some(x) => x.ty.clone(),
                 None => {
                     return Err(Error {
                         loc,
@@ -65,14 +72,12 @@ impl Verifier {
                     })
                 }
             },
-            Expr::Call { f, args, loc } => (
-                loc.clone(),
+            Expr::Call { f, args, loc } =>
                 Expr::Call {
                     f: Box::new(self.get_ty(&f)?),
                     args,
                     loc,
                 },
-            ),
         };
         self.eval(res)
     }
@@ -321,12 +326,12 @@ fn flatten(f: &mut Expr) {
     match f {
         Expr::Ty(_) | Expr::Identifier { .. } => {}
         Expr::Lambda {
-            ty, body, loc: l, ..
+            ty, body, ..
         } => {
             flatten(ty);
             flatten(body);
         }
-        Expr::Call { f, args, loc: l } => {
+        Expr::Call { f, args, .. } => {
             flatten(f);
             for i in args.iter_mut() {
                 flatten(i);
