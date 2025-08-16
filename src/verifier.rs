@@ -122,6 +122,7 @@ impl Verifier {
             };
         }
         self.stack.pop();
+        flatten(&mut res);
         Ok(res)
     }
 
@@ -129,13 +130,13 @@ impl Verifier {
         for (i, arg) in args.into_iter().enumerate() {
             let argty = self.get_ty(&arg)?;
             if let Expr::Lambda { var, ty, body, .. } = f {
-                let mut stacktrace = String::new();
-                for i in self.stack.iter().rev() {
-                    stacktrace.push_str("\n\t");
-                    stacktrace.push_str(&i.to_string());
-                }
-
                 if !is_eq(&mut vec![], &ty, &argty) {
+                    let mut stacktrace = String::new();
+                    for i in self.stack.iter().rev() {
+                        stacktrace.push_str("\n\t");
+                        stacktrace.push_str(&i.to_string());
+                    }
+
                     let mut desc = String::new();
                     desc.push_str(&format!("expected type of parameter `{}` in lambda does not match type of argument:", var));
                     desc.push_str(&format!(
@@ -312,6 +313,33 @@ fn is_eq(bindings: &mut Vec<(Sym, Sym)>, a: &Expr, b: &Expr) -> bool {
             cond
         }
         _ => false,
+    }
+}
+
+fn flatten(f: &mut Expr) {
+    use std::mem;
+    match f {
+        Expr::Ty(_) | Expr::Identifier { .. } => {}
+        Expr::Lambda {
+            ty, body, loc: l, ..
+        } => {
+            flatten(ty);
+            flatten(body);
+        }
+        Expr::Call { f, args, loc: l } => {
+            flatten(f);
+            for i in args.iter_mut() {
+                flatten(i);
+            }
+            if let Expr::Call {
+                f: g, args: args2, ..
+            } = &mut **f
+            {
+                args2.append(args);
+                *args = mem::take(args2);
+                *f = mem::take(g);
+            }
+        }
     }
 }
 

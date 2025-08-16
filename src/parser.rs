@@ -1,9 +1,9 @@
-use std::fmt::Display;
-
 use crate::{
     error::{Error, Loc},
     token::{Scanner, TokenTy},
 };
+use std::fmt::Display;
+use std::path::PathBuf;
 
 pub type Sym = Vec<String>;
 
@@ -67,6 +67,12 @@ pub enum Expr {
         ty: Box<Expr>,
         body: Box<Expr>,
     },
+}
+
+impl Default for Expr {
+    fn default() -> Self {
+        Expr::Ty(Loc::new(PathBuf::new()))
+    }
 }
 
 impl Expr {
