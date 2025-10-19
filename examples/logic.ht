@@ -93,8 +93,8 @@ axiom rem_dneg : \(P: Prop).(If (Not (Not P)) P)
 
 theorem dneg: \(P: Prop).(Iff P (Not (Not P)))
             = \(P: Prop).
-                (and_cons (If P (Not (Not P))) (add_dneg P)
-                          (If (Not (Not P)) P) (rem_dneg P))
+                (iff_cons P (Not (Not P)) 
+		    (add_dneg P) (rem_dneg P))
 
 
 theorem and_assoc_1 
@@ -122,11 +122,9 @@ theorem and_assoc_2
 theorem and_assoc
     : \(P: Prop).\(Q: Prop).\(R: Prop).(Iff (And (And P Q) R) (And P (And Q R)))
     = \(P: Prop).\(Q: Prop).\(R: Prop).
-        (and_cons
-            (If (And (And P Q) R) (And P (And Q R)))
-            (and_assoc_1 P Q R)
-            (If (And P (And Q R)) (And (And P Q) R))
-            (and_assoc_2 P Q R)
+        (iff_cons
+            (And (And P Q) R) (And P (And Q R))
+            (and_assoc_1 P Q R) (and_assoc_2 P Q R)
         )
 
 theorem or_assoc_1
@@ -255,6 +253,16 @@ theorem not_if_implies_and_not
             \(q: Q).(h \(p: P). q)
         )
 
+theorem not_and_implies_if_not
+    : \(P: Prop).\(Q: Prop). (If (Not (And P Q)) (If P (Not Q)))
+    = \(P: Prop).\(Q: Prop).\(h: (Not (And P Q))).\(p: P).
+        \(q: Q).(h (and_cons P p Q q))
+
+theorem if_not_implies_not_and
+    : \(P: Prop).\(Q: Prop). (If (If P (Not Q)) (Not (And P Q)))
+    = \(P: Prop).\(Q: Prop).\(h: (If P (Not Q))).\(pq: (And P Q)).
+        (pq False \(p: P).\(q: Q).(h p q))
+
 theorem pierce
     : \(P: Prop).\(Q: Prop).(If (If (If P Q) P) P)
     = \(P: Prop).\(Q: Prop).\(h: (If (If P Q) P)).
@@ -276,6 +284,16 @@ theorem exists_cons
     : \(T: *).\(P: \(t: T). Prop).\(t: T).\(p: (P t)). (Exists T P)
     = \(T: *).\(P: \(t: T). Prop).\(t: T).\(p: (P t)).
            \(R: *).\(f: \(t: T).\(p:(P t)). R).(f t p)
+
+theorem exists_map
+    : \(T: *).\(P: \(t: T). Prop).\(h1: (Exists T P)).
+        \(Q: \(t: T). Prop).\(h2: \(t: T). (If (P t) (Q t))).
+	    (Exists T Q)
+    = \(T: *).\(P: \(t: T). Prop).\(h1: (Exists T P)).
+        \(Q: \(t: T). Prop).\(h2: \(t: T). (If (P t) (Q t))).
+	    (h1 (Exists T Q) \(t: T).\(p: (P t)).
+	        (exists_cons T Q t (h2 t p)))
+
 
 theorem nexists_then_foralln
     : \(T: *).\(P: \(t: T). Prop).
@@ -300,6 +318,14 @@ theorem nexists_iff_foralln
         (iff_cons (Not (Exists T P)) (Forall T \(t: T).(Not (P t)))
             (nexists_then_foralln T P)
             (foralln_then_nexists T P))
+
+theorem obtain_instance 
+    : \(T: *).\(P: \(x: T). Prop).\(h: (Exists T P)). T
+    = \(T: *).\(P: \(x: T). Prop).\(h: (Exists T P)). 
+        (h T \(x: T).\(hx: (P x)). x)
+
+axiom instance_fulfills_cond
+    : \(T: *).\(P: \(x: T). Prop).\(h: (Exists T P)). (P (obtain_instance T P h))
 
 axiom Eq : \(T: *).\(P: T).\(Q: T). Prop
          = \(T: *).\(P: T).\(Q: T). \(f: \(X: T). Prop). (Iff (f P) (f Q))

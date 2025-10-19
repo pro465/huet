@@ -1,0 +1,182 @@
+use .logic *
+
+axiom Pair
+    : \(P: *).\(Q: *). * 
+    = \(P: *).\(Q: *).\(R: *).\(f: \(p: P).\(q: Q). R). R
+
+theorem pair_cons
+    : \(P: *).\(p: P).\(Q: *).\(q: Q). (Pair P Q)
+    = \(P: *).\(p: P).\(Q: *).\(q: Q).
+        \(R: *).\(f: \(p: P).\(q: Q). R). (f p q)
+
+
+axiom Ord : *
+axiom Lt : \(a: Ord).\(b: Ord). Prop
+
+theorem Leq
+    : \(a: Ord). \(b: Ord). Prop
+    = \(a: Ord). \(b: Ord). (Not (Lt b a))
+
+axiom ord_unbounded : \(x: Ord). (Exists Ord \(y: Ord). (Lt x y))
+
+axiom define_function
+    : \(P: \(x: Ord). *).
+        \(f: 
+            \(y: Ord).
+	        \(hy: \(x: Ord).\(hx: (Lt x y)). (P x)).(P y)
+	). P
+
+theorem ord_induction
+    : \(P: \(x: Ord). Prop). 
+        \(h: \(b: Ord).\(h: \(a: Ord).(If (Lt a b) (P a))).
+                 (P b)). P
+    = \(P: \(x: Ord). Prop). (define_function P)
+
+theorem NoSmallerExists
+    : \(P: \(x: Ord). Prop).\(x: Ord). Prop
+    = \(P: \(x: Ord). Prop).\(x: Ord).
+        (Forall Ord \(y: Ord). 
+            (If (Lt y x) (Not (P y))))
+
+theorem IsSmallest
+    : \(P: \(x: Ord). Prop).\(x: Ord). Prop
+    = \(P: \(x: Ord). Prop).\(x: Ord).
+        (And (P x) (NoSmallerExists P x))
+
+theorem SmallestInsTy
+    : \(P: \(x: Ord). Prop).\(x: Ord).Prop
+    = \(P: \(x: Ord). Prop).\(x: Ord).
+        (If (P x) (Exists Ord (IsSmallest P)))
+
+theorem smallest_instance
+    : SmallestInsTy
+    = \(P: \(x: Ord). Prop).
+        (ord_induction (SmallestInsTy P)
+	    \(b: Ord).
+	    \(h: \(a: Ord).
+	        (If (Lt a b) (SmallestInsTy P a))).
+	    \(hb: (P b)).
+	        (excluded_middle (Exists Ord \(a: Ord). (And (Lt a b) (P a)))
+		    (Exists Ord (IsSmallest P))
+		    \(he: (Exists Ord \(a: Ord). (And (Lt a b) (P a)))).
+		        (he (Exists Ord (IsSmallest P))
+			\(a: Ord).\(ha: (And (Lt a b) (P a))).
+			(ha (Exists Ord (IsSmallest P)) (h a)))
+		    \(he: (Not (Exists Ord \(a: Ord). (And (Lt a b) (P a))))).
+		    (exists_cons Ord (IsSmallest P) b
+		        (and_cons (P b) hb
+			    (NoSmallerExists P b)
+		            \(a: Ord).
+		            (not_and_implies_if_not (Lt a b) (P a)
+			        (nexists_then_foralln Ord \(a: Ord). (And (Lt a b) (P a))
+			            he a
+				)
+			    )
+			)
+		    )
+		)
+	)
+	    
+
+theorem smallest_instance_nonconstructive
+    : \(P: \(x: Ord). Prop).\(h: (Exists Ord P)).
+        (Exists Ord (IsSmallest P))
+    = \(P: \(x: Ord). Prop).\(h: (Exists Ord P)).
+        (h (Exists Ord (IsSmallest P)) (smallest_instance P))
+
+theorem IsSucc
+    : \(x: Ord).\(y: Ord). Prop
+    = \(x: Ord).\(y: Ord).
+        (Forall Ord \(z: Ord). 
+            (If (Lt z y) (Leq z x))
+        )
+
+theorem succ_exists
+    : \(x: Ord).(Exists Ord (IsSucc x))
+    = \(x: Ord).
+        (exists_map Ord \(y: Ord). (And (Lt x y) (IsSucc x y))
+            (smallest_instance_nonconstructive (Lt x) (ord_unbounded x))
+            (IsSucc x)
+            \(s: Ord). (and_right (Lt x s) (IsSucc x s)))
+
+theorem Succ : \(x: Ord). Ord = \(x: Ord). (obtain_instance Ord (IsSucc x) (succ_exists x))
+
+theorem succ_is_succ
+    : \(x: Ord). (IsSucc x (Succ x))
+    = \(x: Ord). (instance_fulfills_cond Ord (IsSucc x) (succ_exists x))
+
+axiom Rep
+    : \(x: Ord).\(f: \(y: Ord).\(hy: (Lt y x)). Ord). Ord
+
+axiom replacement
+    : \(x: Ord).\(f: \(x: Ord). Ord).\(y: Ord).
+        (Iff (Lt (f y) (Rep x f)) (Lt y x))
+
+axiom lt_trans
+    : \(x: Ord).\(y: Ord).\(z: Ord).
+        (If (Lt x y) (If (Lt y z) (Lt x z)))
+
+axiom lt_extensional
+    : \(x: Ord).\(y: Ord).
+        \(h: \(z: Ord). (Iff (Lt z x) (Lt z y))).
+            (Eq Ord x y)
+
+theorem IsUnbounded
+    : \(x: Ord). Prop
+    = \(x: Ord). (And 
+        (Exists Ord \(y: Ord). (Lt y x))
+        (Forall Ord \(y: Ord). (If (Lt y x)
+            (Exists Ord \(z: Ord). (And (Lt y z) (Lt z x))))
+        )
+    )
+
+axiom w: Ord
+
+axiom w_unbounded : (And (IsUnbounded w) \(y: Ord). (If (IsUnbounded y) (Leq w y)))
+
+theorem IsZero
+    : \(z: Ord). Prop
+    = \(z: Ord). (Forall Ord (Leq z))
+
+theorem zero_exists
+    : (Exists Ord IsZero)
+    = (exists_map Ord (IsSmallest \(x: Ord). (Eq Ord x x))
+        (smallest_instance \(x: Ord). (Eq Ord x x)
+            w (eq_refl Ord w))
+        IsZero
+        \(z: Ord).\(hz: (IsSmallest \(x: Ord). (Eq Ord x x) z)).
+        \(x: Ord).\(hx: (Lt x z)).
+            (and_right
+                (Eq Ord z z)
+                (NoSmallerExists \(x: Ord). (Eq Ord x x) z)
+                hz x hx (eq_refl Ord x)
+            )
+    )
+
+theorem Zero: Ord = (obtain_instance Ord IsZero zero_exists)
+
+theorem zero_is_zero : (IsZero Zero)
+    = (instance_fulfills_cond Ord IsZero zero_exists)
+
+theorem IsRegular
+    : \(x: Ord).\(r: Ord).Prop
+    = \(x: Ord).\(r: Ord).
+        (Forall \(x: Ord). Ord
+	    \(f: \(x: Ord). Ord).
+	    (If (Forall Ord \(y: Ord). (If (Lt y x) (Lt (f y) r)))
+	        (Lt (Rep x \(y: Ord).\(hy: (Lt y x)). (f y)) r)))
+
+axiom regular_unbounded
+    : \(x: Ord). (Exists Ord (IsRegular x))
+
+theorem W_exists
+    : (Exists Ord (IsRegular w))
+    = (regular_unbounded w)
+
+theorem func_iter
+    : \(f: \(x: Ord). Ord).\(i: Ord).\(x: Ord). Ord
+    = \(f: \(x: Ord). Ord).
+        (define_function \(i: Ord).\(x: Ord). Ord
+	    \(y: Ord).\(hy: \(x: Ord).\(hx: (Lt x y)).\(t: Ord). Ord).
+	        \(t: Ord). (Rep y \(x: Ord).\(hx: (Lt x y)). (f (hy x hx t)))
+	)

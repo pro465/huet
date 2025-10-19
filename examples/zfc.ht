@@ -1,0 +1,50 @@
+use .logic *
+
+axiom V : *
+axiom In : \(a: V).\(b: V). Prop
+
+theorem VExists : \(P: \(x: V). Prop). Prop = (Exists V)
+theorem VForall : \(P: \(x: V). Prop). Prop = (Forall V)
+theorem NVExists
+    : \(P: \(x: V). Prop). Prop
+    = \(P: \(x: V). Prop). (Not (Exists V P))
+
+theorem VEq : \(a: V).\(b: V). Prop = (Eq V)
+
+theorem IsNonEmpty: \(x: V). Prop = \(x: V). (VExists \(y: V). (In y x))
+theorem IsEmpty: \(x: V). Prop = \(x: V). (NVExists \(y: V). (In y x))
+
+axiom extension : \(x: V).\(y: V).
+    \(h: \(z: V). (Iff (In z x) (In z y))). (VEq x y)
+
+axiom DMem : \(s: V). V
+
+axiom regularity: \(x: V).
+    (If (VExists \(a: V). (In a x))
+        (NVExists \(z: V).(And (In z (disjoint_mem x)) (In z x)))
+    )
+
+axiom Spec: \(x: V).\(P: \(x: *). Prop). V
+
+axiom specification
+    : \(x: V).\(P: \(x: V). Prop).\(z: V). 
+        (Iff (In z (Spec x P)) (And (In z x) (P z)))
+
+axiom Pair : \(a: V).\(b: V). V
+
+axiom pairing : \(a: V).\(b: V).\(x: V).
+    (Iff (In x (Pair a b)) (Or (VEq x a) (VEq x b)))
+
+axiom U: \(x: V). V
+
+axiom union: \(x: V).\(z: V). 
+    (Iff (In z (U x)) 
+        (VExists \(y: V). (And (In z y) (In y x))))
+
+axiom Rep : \(s: V). \(f: \(x: V). V). V
+
+axiom replacement
+    : \(s: V). \(f: \(x: V). V). \(x: V).
+        (Iff (In (f x) (Rep s f)) (In x s))
+
+
