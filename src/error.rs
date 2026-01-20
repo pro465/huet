@@ -9,7 +9,7 @@ pub struct Error {
 
 impl Error {
     pub fn report(&self) {
-        eprintln!("{} @ {}: {}", self.ty, self.loc, self.desc);
+        eprintln!("{} @ {}:\n{}", self.ty, self.loc, self.desc);
     }
 }
 

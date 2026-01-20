@@ -9,20 +9,69 @@ theorem NVExists
     : \(P: \(x: V). Prop). Prop
     = \(P: \(x: V). Prop). (Not (Exists V P))
 
+theorem NVForall
+    : \(P: \(x: V). Prop). Prop
+    = \(P: \(x: V). Prop). (Not (Forall V P))
+
+# h: P => f(h)
+axiom If2
+    : \(P: Prop).\(f: \(p: P). Prop). Prop
+    = \(P: Prop).\(f: \(p: P). Prop). f
+
+# P & (h: P) => f(h)
+theorem AndIf
+    : \(P: Prop).\(f: \(p: P). Prop). Prop
+    = \(P: Prop).\(f: \(p: P). Prop). (And P (If2 P f))
+
+theorem andif_cons
+    : \(P: Prop).\(f: \(p: P). Prop).\(a: P).\(b: f). (AndIf P f)
+    = \(P: Prop).\(f: \(p: P). Prop).\(a: P).\(b: f).
+        (and_cons P a (If2 P f) b) 
+
 theorem VEq : \(a: V).\(b: V). Prop = (Eq V)
 
 theorem IsNonEmpty: \(x: V). Prop = \(x: V). (VExists \(y: V). (In y x))
 theorem IsEmpty: \(x: V). Prop = \(x: V). (NVExists \(y: V). (In y x))
 
+# subset
+theorem Sub
+    : \(a: V).\(b: V). Prop
+    = \(a: V).\(b: V). (VForall \(c: V). (If (In a c) (In b c)))
+
+# empty set
+axiom E: V
+axiom E_def: (IsEmpty E)
+
+# function from set S
+theorem Func : \(S: V). * = \(S: V).\(x: V).\(p: (In x S)). V
+
 axiom extension : \(x: V).\(y: V).
     \(h: \(z: V). (Iff (In z x) (In z y))). (VEq x y)
 
-axiom DMem : \(s: V). V
+theorem IsDisjoint
+    : \(x: V). \(y: V). Prop
+    = \(x: V). \(y: V). (VForall \(z: V). (Not (And (In z x) (In z y))))
 
-axiom regularity: \(x: V).
-    (If (VExists \(a: V). (In a x))
-        (NVExists \(z: V).(And (In z (disjoint_mem x)) (In z x)))
-    )
+theorem IsDMem
+    : \(x: V). \(y: V). Prop
+    = \(x: V). \(y: V). (And (In x y) (IsDisjoint x y))
+
+axiom regularity
+    : \(x: V). (If (IsNonEmpty x) (VExists \(y: V). (IsDMem y x)))
+
+theorem disjoint_mem
+    : \(x: V). \(p: (IsNonEmpty x)). V
+    = \(x: V). \(p: (IsNonEmpty x)). 
+        (obtain_instance V 
+            \(y: V). (IsDMem y x)
+            (regularity x p))
+
+theorem disjoint_mem_is_disjoint_mem
+    : \(x: V). \(p: (IsNonEmpty x)). (IsDMem (disjoint_mem x p) x)
+    = \(x: V). \(p: (IsNonEmpty x)).
+        (instance_fulfills_cond V
+            \(y: V). (IsDMem y x)
+            (regularity x p))
 
 axiom Spec: \(x: V).\(P: \(x: *). Prop). V
 
@@ -35,16 +84,288 @@ axiom Pair : \(a: V).\(b: V). V
 axiom pairing : \(a: V).\(b: V).\(x: V).
     (Iff (In x (Pair a b)) (Or (VEq x a) (VEq x b)))
 
+theorem pair_contains_first
+    : \(a: V).\(b: V). (In a (Pair a b))
+    = \(a: V).\(b: V). 
+        (iff_right (In a (Pair a b)) (Or (VEq a a) (VEq a b))
+            (pairing a b a)
+            (or_left (VEq a a) (VEq a b) (eq_refl V a))
+        )
+
+theorem pair_contains_second
+    : \(a: V).\(b: V). (In b (Pair a b))
+    = \(a: V).\(b: V). 
+        (iff_right (In b (Pair a b)) (Or (VEq b a) (VEq b b))
+            (pairing a b b)
+            (or_right (VEq b a) (VEq b b) (eq_refl V b))
+        )
+
+
 axiom U: \(x: V). V
 
-axiom union: \(x: V).\(z: V). 
-    (Iff (In z (U x)) 
-        (VExists \(y: V). (And (In z y) (In y x))))
+axiom union: \(x: V).\(y: V). 
+    (Iff (In y (U x)) 
+        (VExists \(z: V). (And (In y z) (In z x))))
 
-axiom Rep : \(s: V). \(f: \(x: V). V). V
+# property of minimal set fulfilling a property, if any
+theorem IsMin
+    : \(P: \(x: V). Prop). \(x: V). Prop 
+    = \(P: \(x: V). Prop). \(x: V).
+        (And (P x) (VForall \(y: V). (If (P y) (Sub x y))))
+
+theorem ismin_left
+    : \(P: \(x: V). Prop). \(x: V). (If (IsMin P x) (P x))
+    = \(P: \(x: V). Prop). \(x: V). 
+        (and_left (P x) (VForall \(y: V). (If (P y) (Sub x y))))
+
+theorem ismin_right
+    : \(P: \(x: V). Prop). \(x: V). (If (IsMin P x) (VForall \(y: V). (If (P y) (Sub x y))))
+    = \(P: \(x: V). Prop). \(x: V). 
+        (and_right (P x) (VForall \(y: V). (If (P y) (Sub x y))))
+
+axiom Rep : \(s: V). \(f: \(x: V).\(p: (In x s)). V). V
 
 axiom replacement
-    : \(s: V). \(f: \(x: V). V). \(x: V).
-        (Iff (In (f x) (Rep s f)) (In x s))
+    : \(s: V). \(f: (Func s)). \(x: V).
+        (Iff (In x (Rep s f))
+            (VExists \(y: V). (AndIf (In y s) \(p: (In y s)). (VEq x (f y p))))
+        )
+
+theorem rep_els_1
+    : \(s: V). \(f: (Func s)). \(x: V).
+        \(h: (In x s)). (In (f x h) (Rep s f))
+    = \(s: V). \(f: (Func s)). \(x: V).
+        \(h: (In x s)).
+            (iff_right (In (f x h) (Rep s f))
+                (VExists \(y: V). (AndIf (In y s) \(p: (In y s)). (VEq (f x h) (f y p))))
+                (replacement s f (f x h))
+                (exists_cons V \(y: V). (AndIf (In y s) \(p: (In y s)). (VEq (f x h) (f y p))) 
+                    x
+                    (andif_cons (In x s) \(p: (In x s)). (VEq (f x h) (f x p))
+                        h
+                        \(p: (In x s)). 
+			(eq_replace (In x s) h p 
+			    (proof_irrelevance (In x s) h p)
+			    V (f x)
+			)
+                    )
+                ))
+
+theorem rep_els_2
+    : \(s: V). \(f: (Func s)). \(x: V).
+        (If (In x (Rep s f))
+            (VExists \(y: V). (AndIf (In y s) \(p: (In y s)). (VEq x (f y p))))
+        )
+    = \(s: V). \(f: (Func s)). \(x: V).
+        (iff_left (In x (Rep s f))
+            (VExists \(y: V). (AndIf (In y s) \(p: (In y s)). (VEq x (f y p))))
+            (replacement s f x)
+        )
+
+theorem replacement_nempty_if_set_nempty
+    : \(s: V). \(f: (Func s)). (If (IsNonEmpty s) (IsNonEmpty (Rep s f)))
+    = \(s: V). \(f: (Func s)). \(h: (IsNonEmpty s)).
+        (h (IsNonEmpty (Rep s f)) \(x: V). \(h: (In x s)). 
+            (exists_cons V \(x: V). (In x (Rep s f))
+                (f x h)
+                (rep_els_1 s f x h)
+            )
+        )
 
 
+theorem Singleton : \(x: V). V = \(x: V). (Pair x x)
+
+theorem singleton_is_singleton
+    : \(x: V).\(y: V). (Iff (In y (Singleton x)) (VEq x y))
+    = \(x: V).\(y: V). 
+        (iff_trans2
+            (In y (Singleton x))
+            (Or (VEq y x) (VEq y x))
+            (VEq y x)
+            (VEq x y)
+            (pairing x x y)
+            (or_idem (VEq y x))
+            (eq_symm_2way V y x)
+        )
+
+theorem singleton_elem
+    : \(x: V). (In x (Singleton x))
+    = \(x: V).
+        (iff_right (In x (Singleton x)) (VEq x x)
+            (singleton_is_singleton x x)
+            (eq_refl V x)
+        )
+
+theorem S : \(x: V). V = \(x: V). (U (Pair x (Singleton x)))
+
+theorem IsSMem
+    : \(x: V).\(y: V). Prop
+    = \(x: V).\(y: V). (VExists \(z: V). (And (In y z) (In z (Pair x (Singleton x)))))
+
+theorem S_lemma_1
+    : \(x: V).\(y: V).
+        (If (IsSMem x y) (Or (In y x) (VEq y x)))
+    = \(x: V).\(y: V).\(h: (IsSMem x y)).
+        (h (Or (In y x) (VEq y x)) 
+        \(z: V).\(h: (And (In y z) (In z (Pair x (Singleton x))))).
+            (h (Or (In y x) (VEq y x)) 
+            \(l: (In y z)).\(r: (In z (Pair x (Singleton x)))).
+                (or_map 
+                    (VEq z x) (VEq z (Singleton x))
+                    (In y x) (VEq y x)
+                    (iff_left
+                        (In z (Pair x (Singleton x)))
+                        (Or (VEq z x) (VEq z (Singleton x)))
+                        (pairing x (Singleton x) z)
+                        r
+                    )
+                    \(h: (VEq z x)). 
+                        (iff_left (In y z) (In y x) (h (In y)) l)
+                    \(h: (VEq z (Singleton x))).
+                        (eq_symm V x y (iff_left (In y (Singleton x)) (VEq x y)
+                            (singleton_is_singleton x y)
+                            (iff_left (In y z) (In y (Singleton x)) (h (In y)) l)
+                        ))
+                )
+            )
+        )
+
+theorem S_lemma_2
+    : \(x: V).\(y: V).
+        (If (Or (In y x) (VEq y x)) (IsSMem x y))
+    = \(x: V).\(y: V).
+        \(h: (Or (In y x) (VEq y x))).
+        (h (IsSMem x y)
+            \(h: (In y x)).
+                (exists_cons V \(z: V). (And (In y z) (In z (Pair x (Singleton x))))
+                    x
+                    (and_cons (In y x) h
+                        (In x (Pair x (Singleton x))) 
+                        (pair_contains_first x (Singleton x))
+                    )
+                )
+            \(h: (VEq y x)).
+                (exists_cons V \(z: V). (And (In y z) (In z (Pair x (Singleton x))))
+                    (Singleton x)
+                    (and_cons
+                        (In y (Singleton x))
+                        (iff_right (In y (Singleton x)) (VEq x y)
+                            (singleton_is_singleton x y)
+                            (eq_symm V y x h)
+                        )
+                        (In (Singleton x) (Pair x (Singleton x)))
+                        (pair_contains_second x (Singleton x))
+                    )
+                )
+        )
+
+theorem S_mem
+    : \(x: V).\(y: V).
+        (Iff (In y (S x)) (Or (In y x) (VEq y x)))
+    = \(x: V).\(y: V).
+        (iff_trans
+            (In y (S x))
+            (IsSMem x y)
+            (Or (In y x) (VEq y x))
+            (union (Pair x (Singleton x)) y)
+            (iff_cons
+                (IsSMem x y)
+                (Or (In y x) (VEq y x))
+                (S_lemma_1 x y)
+                (S_lemma_2 x y)
+            )
+        )
+
+# naturals
+axiom N: V
+
+theorem IsInductive
+    : \(I: V). Prop
+    = \(I: V). (And (In E I) (VForall \(n: V). (If (In n I) (In (S n) I))))
+
+axiom N_def
+    : (IsMin IsInductive N)
+
+theorem N_base
+    : (In E N)
+    = (and_left
+         (In E N) (VForall \(n: V). (If (In n N) (In (S n) N)))
+         (ismin_left IsInductive N N_def)
+      )
+
+
+theorem N_inductive
+    : \(n: V). (If (In n N) (In (S n) N))
+    = (and_right
+         (In E N) (VForall \(n: V). (If (In n N) (In (S n) N)))
+         (ismin_left IsInductive N N_def)
+      )
+
+theorem N_is_nempty
+    : (IsNonEmpty N)
+    = (exists_cons V \(x: V). (In x N) E N_base)
+
+
+axiom P: \(x: V). V
+
+axiom P_def: \(x: V).\(y: V). (Iff (In y (P x)) (Sub y x))
+
+
+theorem AC
+    : \(S: V).\(h: \(x: V). (If (In x S) (IsNonEmpty x))). (Func S)
+
+    = \(S: V).\(h: \(x: V). (If (In x S) (IsNonEmpty x))).
+        \(x: V). \(p: (In x S)). 
+            (obtain_instance V \(y: V). (In y x) (h x p))
+
+
+theorem AC_is_AC
+    : \(S: V).\(h: \(x: V). (If (In x S) (IsNonEmpty x))).
+        \(x: V). \(p: (In x S)). (In (AC S h x p) x)
+
+    = \(S: V).\(h: \(x: V). (If (In x S) (IsNonEmpty x))).
+        \(x: V). \(p: (In x S)). 
+            (instance_fulfills_cond V \(y: V). (In y x) (h x p))
+
+
+theorem nids_lemma
+    : \(x: V). \(y: V). \(f: (Func N)).
+      \(h: \(n: V). \(h: (In n N)). (In (f (S n) (N_inductive n h)) (f n h))).
+      \(h1: (In y N)). \(h2: (VEq x (f y h1))).
+          (And (In (f (S y) (N_inductive y h1)) x)
+               (In (f (S y) (N_inductive y h1)) (Rep N f)))
+    = \(x: V). \(y: V). \(f: (Func N)). 
+      \(h: \(n: V). \(h: (In n N)). (In (f (S n) (N_inductive n h)) (f n h))).
+      \(h1: (In y N)). \(h2: (VEq x (f y h1))).
+          (and_cons 
+              (In (f (S y) (N_inductive y h1)) x)
+              (iff_right
+                   (In (f (S y) (N_inductive y h1)) x)
+	           (In (f (S y) (N_inductive y h1)) (f y h1))
+		   (h2 (In (f (S y) (N_inductive y h1))))
+		   (h y h1)
+              )
+              (In (f (S y) (N_inductive y h1)) (Rep N f))
+              (rep_els_1 N f (S y) (N_inductive y h1))
+          )
+
+
+
+# theorem that proves no set with infinite depth exists
+theorem no_infinite_depth_sets
+    : \(f: (Func N)). 
+        (NVForall \(n: V). (If2 (In n N) \(h: (In n N)). (In (f (S n) (N_inductive n h)) (f n h))))
+    = \(f: (Func N)).
+        \(h: (VForall \(n: V). (If2 (In n N) \(h: (In n N)). (In (f (S n) (N_inductive n h)) (f n h))))).
+        (regularity (Rep N f) (replacement_nempty_if_set_nempty N f N_is_nempty)
+            False
+            \(x: V).\(h2: (IsDMem x (Rep N f))).
+            (h2 False \(h1: (In x (Rep N f))). \(h2: (IsDisjoint x (Rep N f))).
+                (rep_els_2 N f x h1 False
+                    \(y: V). \(h3: (AndIf (In y N) \(p: (In y N)). (VEq x (f y p)))).
+                    (h3 False \(h4: (In y N)). \(h5: \(h: (In y N)). (VEq x (f y h))).
+		        (h2 (f (S y) (N_inductive y h4)) (nids_lemma x y f h h4 (h5 h4)))
+		    )
+                )
+            )
+        )

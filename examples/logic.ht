@@ -26,8 +26,9 @@ theorem and_right: \(P: Prop).\(Q: Prop).(If (And P Q) Q)
 axiom Iff : \(P: Prop).\(Q: Prop). Prop
           = \(P: Prop).\(Q: Prop). (And (If P Q) (If Q P))
 
-# axiom iff_replace: \(p: Prop).\(Q: Prop).
-#                    (If (Iff P Q) \(F: \(t: Prop). Prop). (If (F P) (F Q)))
+# axiom iff_replace
+#     : \(p: Prop).\(Q: Prop).
+#         (If (Iff P Q) \(F: \(t: Prop). Prop). (Iff (F P) (F Q)))
 
 theorem iff_cons
     : \(P: Prop).\(Q: Prop).(If (If P Q) (If (If Q P) (Iff P Q)))
@@ -52,12 +53,20 @@ theorem iff_right
 theorem iff_trans 
     : \(P: Prop).\(Q: Prop).\(R: Prop). (If (Iff P Q) (If (Iff Q R) (Iff P R)))
     = \(P: Prop).\(Q: Prop).\(R: Prop).\(h1: (Iff P Q)).\(h2: (Iff Q R)).
-        (and_cons
-            (If P R)
+        (iff_cons P R
             \(p: P).(iff_left Q R h2 (iff_left P Q h1 p))
-            (If R P)
             \(r: R).(iff_right P Q h1 (iff_right Q R h2 r))
         )
+
+theorem iff_trans2 
+    : \(P: Prop).\(Q: Prop).\(R: Prop).\(S: Prop).
+        (If (Iff P Q) (If (Iff Q R) (If (Iff R S) (Iff P S))))
+    = \(P: Prop).\(Q: Prop).\(R: Prop).\(S: Prop).
+        \(h1: (Iff P Q)).\(h2: (Iff Q R)).\(h3: (Iff R S)).
+        (iff_trans P R S
+	    (iff_trans P Q R h1 h2)
+	    h3
+	)
 
 axiom Or : \(P: Prop).\(Q: Prop). Prop
          = \(P: Prop).\(Q: Prop).\(R: Prop).(If (If P R) (If (If Q R) R))
@@ -71,8 +80,27 @@ theorem or_right : \(P: Prop).\(Q: Prop).(If Q (Or P Q))
                    \(f: (If P R)).\(g: (If Q R)).(g q)
 
 theorem or_symm : \(P: Prop).\(Q: Prop).(If (Or P Q) (Or Q P))
-                 = \(P: Prop).\(Q: Prop).\(h: (Or P Q)).
+                = \(P: Prop).\(Q: Prop).\(h: (Or P Q)).
                         (h (Or Q P) (or_right Q P) (or_left Q P))
+
+theorem or_map
+    : \(P: Prop).\(Q: Prop).\(R: Prop).\(S: Prop).
+        (If (Or P Q) (If (If P R) (If (If Q S) (Or R S))))
+    = \(P: Prop).\(Q: Prop).\(R: Prop).\(S: Prop).
+        \(h: (Or P Q)).\(h1: (If P R)).\(h2: (If Q S)).
+	    (h (Or R S)
+	        \(p: P). (or_left R S (h1 p))
+	        \(q: Q). (or_right R S (h2 q))
+	    )
+	
+
+theorem or_idem 
+    : \(P: Prop).(Iff (Or P P) P)
+    = \(P: Prop).
+        (iff_cons (Or P P) P
+	    \(h: (Or P P)). (h P (id P) (id P))
+	    (or_left P P)
+        )
 
 
 axiom False: Prop = \(P: Prop). P
@@ -330,6 +358,8 @@ axiom instance_fulfills_cond
 axiom Eq : \(T: *).\(P: T).\(Q: T). Prop
          = \(T: *).\(P: T).\(Q: T). \(f: \(X: T). Prop). (Iff (f P) (f Q))
 
+axiom proof_irrelevance : \(P: Prop).\(p1: P).\(p2: P). (Eq P p1 p2)
+
 theorem eq_refl 
     : \(T: *).\(P: T). (Eq T P P)
     = \(T: *).\(P: T).\(f: \(P: T). Prop).
@@ -341,6 +371,17 @@ theorem eq_symm
     : \(T: *).\(P: T).\(Q: T). (If (Eq T P Q) (Eq T Q P))
     = \(T: *).\(P: T).\(Q: T).\(h: (Eq T P Q)).
         \(f: \(X: T). Prop).(iff_symm (f P) (f Q) (h f))
+
+theorem eq_symm_2way
+    : \(T: *).\(P: T).\(Q: T). (Iff (Eq T P Q) (Eq T Q P))
+    = \(T: *).\(P: T).\(Q: T). 
+        (iff_cons
+	    (Eq T P Q)
+	    (Eq T Q P)
+	    (eq_symm T P Q)
+	    (eq_symm T Q P)
+	)
+
 
 theorem eq_trans
     : \(T: *).\(P: T).\(Q: T).\(R: T). (If (Eq T P Q) (If (Eq T Q R) (Eq T P R)))
